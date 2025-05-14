@@ -133,7 +133,7 @@ def main():
     try:
         all_data = []
         current_page = 1
-        max_pages = 5  # Adjust as needed
+        max_pages = 200
         
         while current_page <= max_pages:
             print(f"\nProcessing page {current_page} of {max_pages}")
