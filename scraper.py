@@ -2,185 +2,175 @@
 import os
 import time
 import random
+import html
 import pandas as pd
-from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 
-# Load environment variables
-load_dotenv('.env')
+# Suppress TensorFlow warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-def setup_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36")
-    chrome_options.add_argument("--window-size=1920,1080")
+def connect_to_existing_chrome():
+    """Connect to an existing Chrome session with remote debugging enabled"""
+    print("Connecting to existing Chrome session...")
+    options = Options()
+    options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
     
-    service = Service(ChromeDriverManager().install())
-    return webdriver.Chrome(service=service, options=chrome_options)
-
-def login(driver):
-    """Handle login with correct form element IDs"""
     try:
-        print("Navigating to HIMSS homepage...")
-        driver.get("https://www.himss.org/")
-
-        # Wait for page to load completely
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-
-        # Click login button
-        print("Locating login button...")
-        login_button = WebDriverWait(driver, 15).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "li.mega-menu__login > button#login")
-            )
-        )
-
-        print("Clicking login button...")
-        driver.execute_script("arguments[0].click();", login_button)
-
-        # Wait for login form to load - using correct ID selector
-        print("Waiting for login form...")
-        WebDriverWait(driver, 15).until(
-            EC.visibility_of_element_located((By.ID, "emailinput"))
-        )
-
-        # Enter credentials using correct ID selectors
-        print("Entering email...")
-        driver.find_element(By.ID, "emailinput").send_keys(os.getenv('HIMSS_USER'))
-        
-        print("Entering password...")
-        driver.find_element(By.ID, "password").send_keys(os.getenv('HIMSS_PASS'))
-        
-        # Click sign in button using correct ID
-        print("Clicking sign in button...")
-        driver.find_element(By.ID, "btn-login").click()
-
-        # Verify successful login
-        WebDriverWait(driver, 30).until(
-            EC.url_contains("myportal.himss.org/s/")
-        )
-        print("Login successful!")
-        return True
-
+        service = Service()
+        driver = webdriver.Chrome(service=service, options=options)
+        print(f"Connected to Chrome. Current URL: {driver.current_url}")
+        return driver
     except Exception as e:
-        print(f"Login failed: {str(e)}")
-        driver.save_screenshot("login_failure.png")
-        return False
-
-def navigate_to_directory(driver):
-    """Directory navigation with fallback"""
-    try:
-        driver.get("https://myportal.himss.org/s/membershipdirectory")
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table.slds-table"))
-        )
-        return True
-    except:
-        try:
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.LINK_TEXT, "Directories"))
-            ).click()
-            
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.LINK_TEXT, "Member Directory"))
-            ).click()
-            
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.TAG_NAME, "table"))
-            )
-            return True
-        except Exception as e:
-            print(f"Navigation failed: {str(e)}")
-            return False
+        print(f"Connection failed: {str(e)}")
+        return None
 
 def extract_table_data(driver):
-    """Data extraction from table"""
+    """Extract data directly from visible table"""
     try:
-        table = WebDriverWait(driver, 20).until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, "table.slds-table"))
+        # Wait for table to load completely
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.TAG_NAME, "table"))
         )
-        headers = [header.get_attribute("title") for header in table.find_elements(By.CSS_SELECTOR, "th.slds-cell-wrap")]
-        rows = table.find_elements(By.CSS_SELECTOR, "tr.fonteva-record")
+        time.sleep(1)  # Give table a moment to stabilize
+        
+        # Get all visible header cells
+        headers = []
+        header_cells = driver.find_elements(By.CSS_SELECTOR, "table th")
+        for header in header_cells:
+            header_text = header.text.strip()
+            if header_text:
+                headers.append(header_text)
+        
+        print(f"Found {len(headers)} columns")
+        if len(headers) == 0:
+            print("Warning: No headers found, checking for alternative header structure")
+            header_cells = driver.find_elements(By.CSS_SELECTOR, ".tableHeaders")
+            headers = [h.get_attribute("title") for h in header_cells]
+            print(f"Found {len(headers)} columns with alternative selector")
+        
+        # Get all visible rows
+        rows = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
+        print(f"Found {len(rows)} rows")
         
         data = []
         for row in rows:
+            # Get all cells in current row
             cells = row.find_elements(By.TAG_NAME, "td")
-            row_data = {headers[i]: cell.text.strip() for i, cell in enumerate(cells) if i < len(headers)}
-            data.append(row_data)
+            if len(cells) < 2:  # Skip rows with insufficient cells
+                continue
+                
+            # Extract text directly from each cell
+            row_data = {}
+            for i, cell in enumerate(cells):
+                if i < len(headers):
+                    row_data[headers[i]] = cell.text.strip()
+            
+            if any(row_data.values()):  # Only add rows with data
+                data.append(row_data)
+        
+        print(f"Extracted {len(data)} records")
         return data
+    
     except Exception as e:
-        print(f"Data extraction error: {str(e)}")
+        print(f"Extraction error: {str(e)}")
+        driver.save_screenshot(f"extraction_error_{int(time.time())}.png")
         return []
 
-def handle_pagination(driver):
-    """Pagination handling"""
-    try:
-        current_page = driver.find_element(
-            By.CSS_SELECTOR, 
-            "div.slds-grid.slds-grid--align-center"
-        ).text
-        
-        next_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[title='Next Page']"))
-        )
-        next_btn.click()
-        
-        WebDriverWait(driver, 15).until_not(
-            EC.text_to_be_present_in_element(
-                (By.CSS_SELECTOR, "div.slds-grid.slds-grid--align-center"), 
-                current_page
+def handle_pagination(driver, max_retries=3):
+    """Simple pagination handler that works with the page's structure"""
+    for retry in range(max_retries):
+        try:
+            # Get the current page content signature for comparison
+            current_table_state = driver.find_element(By.TAG_NAME, "tbody").get_attribute("innerHTML")
+            
+            # Find the next button directly by its title attribute
+            next_btn = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[title='Next Page']"))
             )
-        )
-        return True
-    except Exception as e:
-        print(f"Pagination error: {str(e)}")
-        return False
+            
+            if "disabled" in next_btn.get_attribute("class"):
+                print("Next button is disabled - reached last page")
+                return False
+            
+            print(f"Clicking next page button (attempt {retry+1})...")
+            driver.execute_script("arguments[0].click();", next_btn)
+            
+            # Wait for table content to change (most reliable indicator)
+            WebDriverWait(driver, 15).until(
+                lambda d: d.find_element(By.TAG_NAME, "tbody").get_attribute("innerHTML") != current_table_state
+            )
+            
+            # Additional verification that data loaded
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "tbody tr"))
+            )
+            
+            # Allow time for any animations to complete
+            time.sleep(2)
+            print("Successfully navigated to next page")
+            return True
+            
+        except Exception as e:
+            print(f"Pagination error (attempt {retry+1}): {str(e)}")
+            driver.save_screenshot(f"pagination_error_{retry+1}.png")
+            time.sleep(2)
+    
+    return False
 
 def main():
-    driver = setup_driver()
+    """Main execution flow"""
+    driver = connect_to_existing_chrome()
+    if not driver:
+        print("Failed to connect to Chrome. Make sure Chrome is running with remote debugging on port 9222.")
+        return
+        
     try:
-        if not login(driver):
-            raise RuntimeError("Login failed after 3 attempts")
-            
-        if not navigate_to_directory(driver):
-            raise RuntimeError("Directory access failed")
-            
         all_data = []
         current_page = 1
-        max_pages = 2  # Start with 2 pages for testing
+        max_pages = 5  # Adjust as needed
         
         while current_page <= max_pages:
-            print(f"Processing page {current_page}")
+            print(f"\nProcessing page {current_page} of {max_pages}")
             page_data = extract_table_data(driver)
-            all_data.extend(page_data)
             
-            if not handle_pagination(driver) or current_page == max_pages:
+            if page_data:
+                all_data.extend(page_data)
+                print(f"Total records collected so far: {len(all_data)}")
+            else:
+                print("No data found on current page")
+                break
+                
+            if current_page == max_pages:
+                print(f"Reached configured limit of {max_pages} pages")
+                break
+                
+            if not handle_pagination(driver):
+                print("No more pages available or pagination failed")
                 break
                 
             current_page += 1
-            time.sleep(random.uniform(1, 3))  # Random delay
-            
+            time.sleep(random.uniform(2.0, 3.0))
+        
+        # Save the collected data
         if all_data:
-            pd.DataFrame(all_data).to_csv("himss_members.csv", index=False)
-            print(f"Saved {len(all_data)} records")
+            df = pd.DataFrame(all_data)
+            output_file = "himss_members.csv"
+            df.to_csv(output_file, index=False, encoding='utf-8-sig')
+            print(f"Successfully saved {len(all_data)} records to {output_file}")
         else:
-            print("No data collected")
+            print("No data was collected")
             
     except Exception as e:
         print(f"Fatal error: {str(e)}")
-        driver.save_screenshot("error.png")
-    finally:
-        driver.quit()
+        driver.save_screenshot(f"fatal_error_{int(time.time())}.png")
+        
+    print("Script execution complete")
 
 if __name__ == "__main__":
     main()
