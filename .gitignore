@@ -35,3 +35,4 @@ geckodriver.exe
 
 # Project specific
 *.csv
+.env
