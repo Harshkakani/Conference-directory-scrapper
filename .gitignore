@@ -34,4 +34,4 @@ chromedriver.exe
 geckodriver.exe
 
 # Project specific
-himss_member_directory.csv
+himss_members.csv
