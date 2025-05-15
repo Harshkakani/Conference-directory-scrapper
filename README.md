@@ -1,10 +1,10 @@
 # HIMSS Member Directory Scraper
 A Python tool to automatically extract healthcare professional contact details from the HIMSS (Healthcare Information and Management Systems Society) Member Directory portal.
 
-Project Overview
+## Project Overview
 This project automates the extraction of professional information from the HIMSS Member Directory, which contains valuable healthcare industry contact data. The scraper handles authentication challenges, website navigation, and data extraction via a hybrid manual-automated approach.
 
-Features  
+## Features  
 ✅ Authentication Handling: Works with Auth0-protected HIMSS portal
 
 ✅ Dynamic Content Navigation: Navigates through the Member Directory
@@ -17,15 +17,13 @@ Features
 
 ✅ Error Recovery: Handles connection issues and dynamic page elements
 
-Requirements  
+## Requirements  
 Python 3.8+
 
 Google Chrome
 
 Required Python packages (see requirements.txt)
 
-Installation
-bash
 ## Clone the repository
 git clone https://github.com/your-username/himss-directory-scraper.git
 cd himss-directory-scraper
