@@ -36,7 +36,9 @@ pip install -r requirements.txt
 ## Create environment file with credentials
 echo "HIMSS_USER=your.email@example.com" > .env
 echo "HIMSS_PASS=your_password" >> .env
-Usage
+
+## Usage
+
 ### Step 1: Start Chrome with Remote Debugging
 #### Windows
 chrome.exe --remote-debugging-port=9222 --user-data-dir=C:\ChromeSession
