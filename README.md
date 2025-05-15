@@ -37,33 +37,33 @@ pip install -r requirements.txt
 echo "HIMSS_USER=your.email@example.com" > .env
 echo "HIMSS_PASS=your_password" >> .env
 Usage
-Step 1: Start Chrome with Remote Debugging
-bash
-## Windows
+### Step 1: Start Chrome with Remote Debugging
+#### Windows
 chrome.exe --remote-debugging-port=9222 --user-data-dir=C:\ChromeSession
 
-## macOS
+### macOS
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir=~/ChromeSession
-Step 2: Manual Login & Navigation
+
+### Step 2: Manual Login & Navigation
 Login to HIMSS using your credentials
 
 Navigate to Member Directory (via Directories dropdown)
 
 Leave browser window open with directory page displayed
 
-Step 3: Run the Scraper
-bash
+### Step 3: Run the Scraper
 python scraper.py
-How It Works
+
+## How It Works
 The scraper operates in three main phases:
 
-Connection Phase:
+### Connection Phase:
 
 Connects to existing Chrome session with active HIMSS login
 
 Verifies current page is Member Directory
 
-Data Extraction Phase:
+### Data Extraction Phase:
 
 Parses table structure to extract member information
 
@@ -75,7 +75,8 @@ Navigates through all directory pages (up to 200)
 
 Stores collected data in CSV format
 
-Implementation Details
+### Implementation Details
+
 Browser Control: Selenium WebDriver with Chrome
 
 Authentication: Hybrid approach with manual login and automated session connection
@@ -84,7 +85,8 @@ Pagination Handling: JavaScript execution for reliable page transitions
 
 Error Recovery: Exception handling with screenshots for troubleshooting
 
-Challenges Overcome
+### Challenges Overcome
+
 Auth0 authentication detection avoidance
 
 Dynamic content loading and pagination without URL changes
@@ -93,8 +95,8 @@ Table structure parsing with various data formats
 
 Session management and state preservation
 
-License
+### License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-Disclaimer
+### Disclaimer
 This tool is intended for educational purposes only. Users are responsible for complying with HIMSS terms of service when accessing their data.
