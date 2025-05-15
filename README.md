@@ -1,10 +1,10 @@
-HIMSS Member Directory Scraper
+# HIMSS Member Directory Scraper
 A Python tool to automatically extract healthcare professional contact details from the HIMSS (Healthcare Information and Management Systems Society) Member Directory portal.
 
 Project Overview
 This project automates the extraction of professional information from the HIMSS Member Directory, which contains valuable healthcare industry contact data. The scraper handles authentication challenges, website navigation, and data extraction via a hybrid manual-automated approach.
 
-Features
+Features  
 ✅ Authentication Handling: Works with Auth0-protected HIMSS portal
 
 ✅ Dynamic Content Navigation: Navigates through the Member Directory
@@ -17,7 +17,7 @@ Features
 
 ✅ Error Recovery: Handles connection issues and dynamic page elements
 
-Requirements
+Requirements  
 Python 3.8+
 
 Google Chrome
@@ -26,23 +26,23 @@ Required Python packages (see requirements.txt)
 
 Installation
 bash
-# Clone the repository
+## Clone the repository
 git clone https://github.com/your-username/himss-directory-scraper.git
 cd himss-directory-scraper
 
-# Install dependencies
+## Install dependencies
 pip install -r requirements.txt
 
-# Create environment file with credentials
+## Create environment file with credentials
 echo "HIMSS_USER=your.email@example.com" > .env
 echo "HIMSS_PASS=your_password" >> .env
 Usage
 Step 1: Start Chrome with Remote Debugging
 bash
-# Windows
+## Windows
 chrome.exe --remote-debugging-port=9222 --user-data-dir=C:\ChromeSession
 
-# macOS
+## macOS
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir=~/ChromeSession
 Step 2: Manual Login & Navigation
 Login to HIMSS using your credentials
